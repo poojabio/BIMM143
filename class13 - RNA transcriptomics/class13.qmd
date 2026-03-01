@@ -1,0 +1,250 @@
+---
+title: "class13"
+author: "Pooja Parthasarathy | A17817456"
+format: pdf
+---
+
+## Background 
+
+Today we will perform an RNASeq analysis on the effects of dexamethasone (dex for short), a common steroid on airway smooth muscle (ASM) cell lines 
+
+## Data 
+
+We need 2 things for this analysis - count and col data 
+- **countData**: the biggest of the two, the table with genes as rows and samples as columns 
+- **colData*: the metadata about the columns (i.e, sanples) in the main countData object
+
+```{r import}
+counts <- read.csv("airway_scaledcounts.csv", row.names = 1)
+metadata <-  read.csv("airway_metadata.csv")
+```
+
+```{r}
+(metadata)
+```
+
+```{r}
+head(counts)
+```
+
+## Check on metadata count corespondance 
+
+We need to check that the metadata matches the samples in our count data.
+
+```{r}
+ncol(counts) ==
+nrow(metadata)
+```
+
+```{r}
+all(colnames(counts) == 
+metadata$id)
+```
+
+> Q1.How many genes in this dataset 
+
+```{r}
+nrow(counts)
+```
+
+
+>Q2. How many control samples are in this dataset 
+
+```{r}
+sum(metadata$dex == "control")
+```
+
+## Analysis Plan 
+
+>Q3 
+We have 4 replicates per condition (cotnrol & treated), we want to compare the control vs the treated to see which genes expression levels change wen we have the drug present. 
+
+To do this you first group by celltype, find a summary statistic to represent the average expression level for the gene 
+
+- Step 1. find which samples of columns in counts correspond to "control" samples.
+- Step 2. Exreact/select these control columns 
+- Step 3. Across these control samples generate an aveage for each gene's expression (utilize MEAN ACROSS ROWS)
+
+
+```{r}
+#the indices (i.e positions) that are "control"
+
+control.inds <- metadata$dex == "control" 
+```
+
+```{r}
+control.counts <- counts[, control.inds]
+```
+
+```{r}
+#calculate the mean for each gene (i.e row)
+
+control.mean <- rowMeans(control.counts)
+```
+
+> Now let us do the same for treated samples 
+
+```{r}
+treated.inds <- metadata$dex == "treated" 
+```
+
+```{r}
+treated.counts <- counts[, treated.inds]
+```
+
+```{r}
+treated.mean <- rowMeans(treated.counts)
+```
+
+Let's put these two mean values in a new data.frame for easy book keeping and plotting 
+
+```{r}
+meancounts <- data.frame(control.mean, treated.mean)
+head(meancounts)
+```
+
+> Q5
+
+```{r}
+library(ggplot2)
+ggplot(meancounts) + 
+  aes(control.mean, treated.mean) +
+  geom_point(alpha = 0.3) 
+```
+
+
+> Make a ggplot of average counts of control versus treated
+
+```{r}
+
+ggplot(meancounts) + 
+  aes(control.mean, treated.mean) +
+  geom_point(alpha = 0.3) + 
+  scale_x_log10() +
+  scale_y_log10()
+  
+```
+
+## Log2 units and fold change 
+
+If we consider treated/control counts we will get a number that tells us the change (fold change) is the log of this fraction meaning for instange log(1/1) = 0 therefore no hange while the fraction itself may equal 1. A doublign will lead to +1 log(2) = 1, halving will be -1.
+
+idea - take existing mean counts data frame and make an additional fold change column
+
+
+```{r}
+log2(10/20)
+```
+
+> Add a new column `log2fc` for log2 fold change of treated/control to our `meancounts` object 
+
+```{r}
+meancounts$log2fc <- log2(meancounts$treated.mean/meancounts$control.mean)
+
+head(meancounts)
+```
+
+```{r}
+zero.vals <- which(meancounts[,1:2]==0, arr.ind=TRUE)
+
+to.rm <- unique(zero.vals[,1])
+mycounts <- meancounts[-to.rm,]
+head(mycounts)
+```
+
+> Q7. What is the purpose of the arr.ind argument in the which() function call above? Why would we then take the first column of the output and need to call the unique() function?
+
+The arr.ind=TRUE helps find indices aka rows and columns where it is TRUE, or for us - having 0 counts. Calling unique() will ensure we don’t count any row twice if it has zero entries in both samples.
+
+
+Now we can use some fold thresholds to just check for up and downregulation
+
+```{r}
+up.ind <- mycounts$log2fc > 2
+down.ind <- mycounts$log2fc < (-2)
+```
+
+
+> Q8
+
+```{r}
+sum(up.ind)
+```
+
+> Q9
+
+```{r}
+sum(down.ind)
+```
+
+> Q10
+
+We cannot fully tell as the results have not been tested for their significance yet!
+
+
+## Setting up DESeq2
+
+Let’s do this the right way. DESeq2 is an R package specifically for analyzing count-based NGS data like RNA-seq. It is available from Bioconductor. Bioconductor is a project to provide tools for analyzing high-throughput genomic data including RNA-seq, ChIP-seq and arrays. You can explore Bioconductor packages here.
+
+Bioconductor packages usually have great documentation in the form of vignettes. For a great example, take a look at the DESeq2 vignette for analyzing count data. This 40+ page manual is packed full of examples on using DESeq2, importing data, fitting models, creating visualizations, references, etc.
+
+Just like R packages from CRAN, you only need to install Bioconductor packages once (instructions here), then load them every time you start a new R session.
+
+```{r}
+# Load up DESeq2
+
+library(DESeq2)
+
+dds <- DESeqDataSetFromMatrix(countData=counts, 
+                              colData=metadata, 
+                              design=~dex)
+
+```
+
+```{r}
+dds <- DESeq(dds)
+```
+```{r}
+res <- results(dds)
+```
+
+```{r}
+res
+```
+
+We can get some basic summaries tallies using the `summary()` function 
+
+```{r}
+summary(res, alpha = 0.05)
+```
+## Data Visualization - Volcano plots 
+
+```{r}
+plot(res$log2FoldChange, res$padj)
+```
+
+```{r}
+plot(res$log2FoldChange, -log(res$padj))
+
+```
+
+```{r}
+# Setup our custom point color vector 
+mycols <- rep("gray", nrow(res))
+mycols[ abs(res$log2FoldChange) > 2 ]  <- "red" 
+
+inds <- (res$padj < 0.01) & (abs(res$log2FoldChange) > 2 )
+mycols[ inds ] <- "blue"
+
+# Volcano plot with custom colors 
+plot( res$log2FoldChange,  -log(res$padj), 
+ col=mycols, ylab="-Log(P-value)", xlab="Log2(FoldChange)" )
+
+# Cut-off lines
+abline(v=c(-2,2), col="gray", lty=2)
+abline(h=-log(0.1), col="gray", lty=2)
+```
+
+
+
+

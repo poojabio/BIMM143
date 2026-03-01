@@ -1,0 +1,142 @@
+---
+title: "PCA Class 8 - Machine Learning II"
+format: pdf
+---
+
+## Quarto
+
+
+
+```{r}
+wisconsin <-  read.csv("/Users/poojaparthasarathy/Downloads/WisconsinCancer.csv", row.names = 1)
+head(wisconsin)
+```
+
+> How many obeservations are in this data set?
+
+```{r}
+nrow(wisconsin)
+```
+> How many obeservations are in this data set?
+
+```{r}
+length(grep("M", wisconsin$diagnosis))
+
+##sum(wisconsin$diagnosis == "M")
+##sum(table(wisconsin$diagnosis))
+```
+> how many variables/features in the data are suffixed with mean?
+
+```{r}
+names <- c(colnames(wisconsin))
+
+length(grep("_mean", names))
+
+```
+
+We need to remove the diagnosis column before we doany further analysis as to not bias the way we come to an answer. It should not impact the way a PCA works
+Save it into a vector so htat you can look back at it later on for verifying your results 
+
+```{r}
+wisconsin.data <- wisconsin[,-1]
+diagnosis <-  wisconsin$diagnosis
+
+```
+
+
+```{r}
+wisc.pr <-  prcomp(wisconsin.data, scale = TRUE)
+```
+
+```{r}
+attributes(wisc.pr)
+```
+
+```{r}
+library(ggplot2)
+
+#wisc.pr$x
+
+ggplot(wisc.pr$x) + 
+  aes(PC1,PC2, col = diagnosis)+
+  geom_point()
+```
+
+## Plots 
+OUR ABOVE GRAPH SHOWS US THE SCORE PLOT, it can show you multiple different variables but represents key characteristics across various dimensions 
+
+Using varaiance you can observe the variance covered by various PCs
+```{r}
+pr.var <- wisc.pr$sdev^2
+head(pr.var)
+```
+
+
+```{r}
+library(factoextra)
+fviz_eig(wisc.pr, addlabels = TRUE)
+```
+
+
+
+#4 Hierarchical clustering 
+```{r}
+wisc.dist <- dist(scale(wisconsin.data))
+```
+
+```{r}
+wisc.hclust <- hclust(wisc.dist)
+plot(wisc.hclust)
+```
+```{r}
+table(cutree(wisc.hclust, k=2))
+```
+
+## Combing different methods 
+Take your pca data and then cluster this refined the clustering you;ll achieve. The idea here is that I can take my new variables (The PCs) that are better descriptors of the dataset than the origina features and find better clustering 
+
+```{r}
+pc.dist <- dist(wisc.pr$x[,1:3])
+wisc.pr.hclust <- hclust(pc.dist, method = "ward.D2")
+plot(wisc.pr.hclust)
+```
+
+```{r}
+grps <- cutree(wisc.pr.hclust, k=2)
+table(grps)
+
+table(grps, diagnosis)
+
+```
+
+```{r}
+ggplot(wisc.pr$x) +
+  aes(PC1, PC2) +
+  geom_point(col=grps)
+```
+
+cluster 1 has 179 malignant while cluster. seems to be dominated by beningn 333
+
+Sensitivity calucaltion 
+```{r}
+179/(179+34)
+```
+
+Specificity 
+```{r}
+333/(333 + 24)
+```
+
+```{r}
+#url <- "new_samples.csv"
+url <- "https://tinyurl.com/new-samples-CSV"
+new <- read.csv(url)
+npc <- predict(wisc.pr, newdata=new)
+npc
+```
+
+```{r}
+plot(wisc.pr$x[,1:2], col=grps)
+points(npc[,1], npc[,2], col="blue", pch=16, cex=3)
+text(npc[,1], npc[,2], c(1,2), col="white")
+```

@@ -1,0 +1,122 @@
+---
+title: "Class 5: Data Viz with ggplot"
+author: "Pooja Parthasarathy (PID:A17817456)"
+format: pdf
+toc: true
+---
+
+
+## Background 
+
+There are lots of ways to make visualization and plots in R. These include, so-called "base R" (like the function `plot()`) and **ggplot2** 
+
+Let's make the same plot with these two graphics systems. We can use inbuilt `cars` dataset.
+```{r}
+head(cars)
+```
+```{r}
+plot(cars)
+```
+first you need to install ggplot using the command `install.packages("ggplot2")`
+
+> **N.B** We never run an install of packages in a code chunk otherwise we will reinstall needlesely every time we render our document 
+
+Everytime you want to use an add on packaged we need to load it up with a call to `library()`
+
+```{r}
+library(ggplot2)
+ggplot(cars)
+```
+Every ggplot needs at least 3 things: 
+
+1. The **Data** i.e. struff to plot as a dataframe
+2. **Aesthetics** that map the data to the plot 
+3. **geom_** or geometry of the plot 
+
+```{r}
+ggplot(cars) +
+  aes(x=speed, y=dist) +
+  geom_point() + 
+  geom_smooth(method = "lm", se = FALSE) + 
+  labs(x="Speed (MPH)", y= "Distance(ft)", title = "stopping distance of old cars") + 
+  
+  theme_dark()
+```
+
+
+## Gene Expression Plot
+
+Read some fata on the effects of GLP-1 inhibitor drug on gene expression values 
+```{r}
+url <- "https://bioboot.github.io/bimm143_S20/class-material/up_down_expression.txt"
+genes <- read.delim(url)
+head(genes)
+```
+Version 1 plot - start simple by getting some ink on the page!
+
+```{r}
+table(genes$State)
+
+ggplot(genes)+
+  aes(Condition1,Condition2, col= State)+
+  geom_point() + 
+  scale_color_manual(values = c("purple","gray","orange")) +
+  labs(x="No Drug", y= "Drug Treatment", title = "Gene Expression Response to GLP-1 drug") +
+  theme_classic()
+```
+
+## Going further with gapminder 
+
+Here we explore the famous `gapminder` dataset with some custom plots 
+```{r}
+# File location online
+url <- "https://raw.githubusercontent.com/jennybc/gapminder/master/inst/extdata/gapminder.tsv"
+
+gapminder <- read.delim(url)
+head(gapminder)
+```
+
+> Q. how many rows does this datasethave 
+
+```{r}
+nrow(gapminder)
+```
+
+> Q. how many different countries are in this dataset 
+
+```{r}
+table(gapminder$continent)
+```
+
+
+
+Version 1 plot GDP Vs Life Expectancy for all rows 
+```{r}
+ggplot(gapminder) +
+  aes(x=gdpPercap, y=lifeExp, col=continent) + 
+  geom_point() 
+```
+
+We want to see plots for each of the continents in ggplot lingo this is called "faceting" 
+```{r}
+ggplot(gapminder) +
+  aes(x=gdpPercap, y=lifeExp, col=continent) + 
+  geom_point() +
+  facet_wrap(~continent)
+```
+
+## First look at the dplyr package
+
+Another add on package with a function called `filter` that we want to use. 
+```{r}
+library(dplyr)
+
+input <- filter(gapminder, year == 2007 | year == 1977 )
+
+ggplot(input)+
+  aes(x=gdpPercap, y=lifeExp, col=continent) + 
+  geom_point() +
+  facet_wrap(~year)
+
+```
+

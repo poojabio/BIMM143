@@ -1,0 +1,79 @@
+---
+title: "class12 - RNA Seq & Databases"
+author: "Pooja Parthasarathy | PID: A17817456"
+format: pdf
+---
+
+## Question 5 
+```{r}
+
+mxl <- read.csv("/Users/poojaparthasarathy/Documents/WINTER 2026 UCSD/BIMM143/r wrok/class12/class12/373531-SampleGenotypes-Homo_sapiens_Variation_Sample_rs8067378.csv")
+```
+
+```{r}
+length(grep("^G\\|G$", mxl$Genotype..forward.strand.))
+```
+
+```{r}
+table(mxl$Genotype..forward.strand.)
+```
+
+```{r}
+table(mxl$Genotype..forward.strand.)/nrow(mxl) * 100 
+
+```
+
+
+> Now we do this analysis but for the GBR population 
+
+```{r}
+gbr <- read.csv("/Users/poojaparthasarathy/Documents/WINTER 2026 UCSD/BIMM143/r wrok/class12/class12/373522-SampleGenotypes-Homo_sapiens_Variation_Sample_rs8067378.csv")
+```
+
+```{r}
+table(gbr$Genotype..forward.strand.)
+
+```
+
+```{r}
+table(gbr$Genotype..forward.strand.)/nrow(gbr) * 100 
+
+```
+
+This variat is associated with childhoos asthma and is more frequent in the GBR population in comparison to MXL 
+
+
+
+## Population scale analysis
+
+One sample is obviously not enough to know what is happening in a population. You are
+interested in assessing genetic differences on a population scale. So, you processed about
+~230 samples and did the normalization on a genome level. Now, you want to find whether
+there is any association of the 4 asthma-associated SNPs (rs8067378…) on ORMDL3
+expression
+
+How many samples do we have
+```{r}
+
+expr <-  read.table("rs8067378_ENSG00000172057.6.txt")
+head(expr)
+```
+
+Q13. From the file read in, we can use the number of rows to determine the number of samples. This results in 462
+```{r}
+nrow(expr)
+```
+
+```{r}
+table(expr$geno)
+```
+
+```{r}
+library(ggplot2)
+
+ggplot(expr) + aes(geno, exp, fill = geno) + 
+  geom_boxplot(notch = TRUE)
+
+```
+Q14.
+Yes, we can observe that there are differences in expression that occur due to different SNPS. Based on the graphs, a higher expression can be noted from A/A SNPs whilst the lowest expression ranges are associated with G/G, additionally bolstered by notch placement which shows obvious difference in the median expression across all three genotypes.

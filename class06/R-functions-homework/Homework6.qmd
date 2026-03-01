@@ -1,0 +1,88 @@
+---
+title: "Homework Supplement - R & PDB Function"
+author: "Pooja Parthasarathy - A17817456" 
+format: pdf
+---
+
+# Section 1
+
+```{r}
+library(bio3d)
+
+s1 <- read.pdb("4AKE") # kinase with drug
+s2 <- read.pdb("1AKE") # kinase no drug
+s3 <- read.pdb("1E4Y") # kinase with drug
+
+s1.chainA <- trim.pdb(s1, chain="A", elety="CA")
+s2.chainA <- trim.pdb(s2, chain="A", elety="CA")
+s3.chainA <- trim.pdb(s3, chain="A", elety="CA")
+
+s1.b <- s1.chainA$atom$b
+s2.b <- s2.chainA$atom$b
+s3.b <- s3.chainA$atom$b
+
+plot(s1.b, sse=s1.chainA, typ="l", ylab="Bfactor")
+plot(s2.b, sse=s2.chainA, typ="l", ylab="Bfactor")
+plot(s3.b, sse=s3.chainA, typ="l", ylab="Bfactor")
+
+
+hc <- hclust( dist( rbind(s1.b, s2.b, s3.b) ) )
+plot(hc)
+```
+
+## Q1. What type of object is returned from the read.pdb() function? 
+The type is of a list with roughly 8 elements - within which is a large dataframe, & other lists and data types like double -  for s1,s2,s3. It showcases various properties of the protein in terms of its stuctural identity 
+
+## Q2.  What does the trim.pdb() function do?
+Out of the large dataframe initially presented and the initial 8 element list, trim as the name suggests, "trims" in terms of the specified chain type and atom elety property/structural state.
+
+## Q3. What input parameter would turn off the marginal black and grey rectangles in theplots and what do they represent in this case?
+It is caused by the plot type chosen, plotb3, once we remove that we are able to eliminate any bars that show up due to the residue presence
+
+##Q4. What would be a better plot to compare across the different proteins? 
+A multiline plot that draws this same linegraph however has all three proteins displayed across the same index scale in one graph would make comparison easier
+
+##Q5. Which proteins are more similar to each other in their B-factor trends. How could you quantify this?
+From the cluster we can observe that based on "similarity" s2 and s3 show a closer lineage, splitting away from s1 whilst s1 shows more variance in the b-factor trends 
+
+## Q6. How would you generalize the original code above to work with any set of input protein structures?
+
+
+```{r}
+
+library(bio3d)
+
+bfactor_function <- function(pdb_ids, chain="A", elety="CA") {
+
+##to help eliminate repetitive function calls, we can use lapply
+  pdbs <- lapply(pdb_ids, read.pdb)
+  chains <- lapply(pdbs, function(x) trim.pdb(x, chain=chain, elety=elety))
+  bvals <- lapply(chains, function(x) x$atom$b)
+
+  for(i in seq_along(bvals)) {
+  ## for each protein in the given list we iterate to plot for the chain, line plot and show the bfactor
+    plot(bvals[[i]], sse=chains[[i]], type="l", ylab="Bfactor") 
+  }
+
+  #pull it all together into one dataframe
+  bmat <- do.call(rbind, bvals)
+  hc <- hclust(dist(bmat))
+  plot(hc)
+
+  bmat ##return
+}
+```
+
+```{r}
+bfactor_output <- bfactor_function(c("4AKE","1AKE","1E4Y"))
+bfactor_output
+```
+
+##Questions & Answers for 6 - Function 
+- INPUTS-> this function takes in protein database ids in the form of a vector, and return their bfactor plots across indexes
+- To use this, you should first give an input your pdb ids as a vector of strings, the function will then:
+1) read the ideas using read.pdb across each item in your vector
+2) follows this process to further read chains and bvalues (here they are defined as defaults, but you can specify!)
+3) It will use a for loop to traverse through each of those values saved from the lapply using indexes and generate a plot 
+4) hclust will generate a phylogeny tree to see differences and similarities
+
